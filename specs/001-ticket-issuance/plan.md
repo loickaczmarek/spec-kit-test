@@ -14,8 +14,14 @@ This feature implements a ticket issuance system for parking facility entry. Whe
 ## Technical Context
 
 **Language/Version**: TypeScript 5.3 with Node.js 20 LTS
-**Primary Dependencies**: Express.js (API), Prisma (ORM), Kafka.js (event bus), ioredis (caching), Winston (logging)
-**Storage**: PostgreSQL 16 (primary), Redis 7 (cache layer)
+**Primary Dependencies**:
+- Express.js 5.x (API framework with enhanced router and middleware)
+- Prisma (latest) (ORM with native PostgreSQL support)
+- KafkaJS (latest) (event bus with idempotent producer support)
+- ioredis v5.4.0+ (high-performance Redis client with clustering)
+- Winston (structured logging)
+
+**Storage**: PostgreSQL 16 (primary with native array/JSON support), Redis 7 (cache layer with pub/sub)
 **Testing**: Jest (unit/integration), Supertest (API), Testcontainers (contract/integration)
 **Target Platform**: Linux server (Docker containers, Kubernetes deployment)
 **Project Type**: Backend API service (bounded contexts as modules within monorepo)
@@ -131,6 +137,299 @@ This feature implements a ticket issuance system for parking facility entry. Whe
 ### Summary
 
 **Overall Gate Status**: ✅ PASS - All constitutional principles satisfied. No violations requiring justification. Design aligns with multi-tenant, event-driven, domain-driven architecture mandated by constitution.
+
+## Implementation Guidelines
+
+*Updated with latest best practices from Context7 documentation*
+
+### Prisma Transaction & Locking Patterns
+
+**Pessimistic Locking for Spot Assignment** (FR-004, FR-015, SC-004):
+```typescript
+// Use interactive transactions with $queryRaw for SELECT FOR UPDATE
+await prisma.$transaction(async (tx) => {
+  // Pessimistic lock with NOWAIT to fail fast on contention
+  const spot = await tx.$queryRaw`
+    SELECT * FROM facility_spots
+    WHERE facility_id = ${facilityId}
+      AND vehicle_type = ${vehicleType}
+      AND status = 'AVAILABLE'
+    LIMIT 1
+    FOR UPDATE NOWAIT
+  `;
+
+  if (!spot) throw new Error('No available spots');
+
+  // Update spot status atomically
+  await tx.spot.update({
+    where: { id: spot.id },
+    data: { status: 'OCCUPIED' }
+  });
+
+  // Create ticket within same transaction
+  const ticket = await tx.ticket.create({
+    data: { /* ... */ }
+  });
+
+  return ticket;
+}, {
+  isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+  timeout: 5000 // 5s max transaction time
+});
+```
+
+**Transaction Retry Strategy** (SC-004):
+```typescript
+async function executeWithRetry<T>(
+  operation: () => Promise<T>,
+  maxRetries = 3
+): Promise<T> {
+  let retries = 0;
+  while (retries < maxRetries) {
+    try {
+      return await operation();
+    } catch (error) {
+      // Retry on deadlock or serialization failure
+      if (error.code === 'P2034' || error.code === '40001') {
+        retries++;
+        await new Promise(resolve => setTimeout(resolve, 100 * retries));
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw new Error('Max retries exceeded');
+}
+```
+
+**Reference**: Prisma transaction documentation emphasizes keeping transactions short, using appropriate isolation levels, and implementing retry logic for serialization conflicts.
+
+### KafkaJS Event Publishing Patterns
+
+**Idempotent Producer Configuration** (FR-010, FR-011, SC-007):
+```typescript
+import { Kafka } from 'kafkajs';
+
+const kafka = new Kafka({
+  clientId: 'ticketing-service',
+  brokers: ['kafka1:9092', 'kafka2:9092']
+});
+
+// Configure producer for exactly-once semantics
+const producer = kafka.producer({
+  transactionalId: 'ticketing-producer-001',
+  maxInFlightRequests: 1,
+  idempotent: true,
+  retry: {
+    initialRetryTime: 100,
+    retries: 8
+  }
+});
+
+await producer.connect();
+```
+
+**Event Publishing After Database Commit** (FR-010):
+```typescript
+// Publish event AFTER successful database transaction
+async function issueTicketWithEvent(ticketData: TicketData) {
+  // 1. Database transaction (atomic)
+  const ticket = await prisma.$transaction(async (tx) => {
+    // ... spot assignment + ticket creation
+  });
+
+  // 2. Publish event (fail independently, retry via outbox pattern)
+  try {
+    await producer.send({
+      topic: 'tickets.issued.v1',
+      messages: [{
+        key: ticket.id,
+        value: JSON.stringify({
+          event_id: uuidv4(),
+          event_type: 'TicketIssued',
+          version: '1.0',
+          timestamp: new Date().toISOString(),
+          data: {
+            ticket_id: ticket.id,
+            facility_id: ticket.facilityId,
+            tenant_id: ticket.tenantId,
+            vehicle_type: ticket.vehicleType,
+            spot_id: ticket.spotId
+          }
+        }),
+        headers: {
+          'event-type': 'TicketIssued',
+          'tenant-id': ticket.tenantId
+        }
+      }]
+    });
+  } catch (error) {
+    // Log failure for outbox processing
+    await logEventPublishFailure(ticket.id, error);
+  }
+
+  return ticket;
+}
+```
+
+**Reference**: KafkaJS documentation recommends `transactionalId` + `idempotent: true` for exactly-once semantics, with `maxInFlightRequests: 1` to prevent message reordering.
+
+### ioredis Caching Patterns
+
+**Write-Through Cache Invalidation** (FR-015, Performance Goals):
+```typescript
+import Redis from 'ioredis';
+
+const redis = new Redis({
+  host: 'redis-cluster',
+  port: 6379,
+  maxRetriesPerRequest: 3,
+  retryStrategy(times) {
+    const delay = Math.min(times * 50, 2000);
+    return delay;
+  }
+});
+
+// Cache spot availability counts
+async function getAvailableSpotCount(
+  facilityId: string,
+  vehicleType: string
+): Promise<number> {
+  const cacheKey = `spot:avail:${facilityId}:${vehicleType}`;
+
+  // Try cache first
+  const cached = await redis.get(cacheKey);
+  if (cached !== null) {
+    return parseInt(cached, 10);
+  }
+
+  // Cache miss - query database
+  const count = await prisma.spot.count({
+    where: {
+      facilityId,
+      vehicleType,
+      status: 'AVAILABLE'
+    }
+  });
+
+  // Cache with 30s TTL
+  await redis.setex(cacheKey, 30, count.toString());
+  return count;
+}
+
+// Invalidate cache on spot assignment
+async function invalidateSpotCache(facilityId: string, vehicleType: string) {
+  const cacheKey = `spot:avail:${facilityId}:${vehicleType}`;
+  await redis.del(cacheKey);
+}
+```
+
+**Pub/Sub for Real-Time Invalidation** (Real-Time State Management):
+```typescript
+// Subscriber for cache invalidation events
+const subscriber = new Redis();
+
+subscriber.subscribe('spot:invalidate', (err, count) => {
+  if (err) console.error('Subscribe error:', err);
+});
+
+subscriber.on('message', async (channel, message) => {
+  const { facilityId, vehicleType } = JSON.parse(message);
+  await invalidateSpotCache(facilityId, vehicleType);
+});
+
+// Publisher (called after spot assignment)
+const publisher = new Redis();
+await publisher.publish('spot:invalidate', JSON.stringify({
+  facilityId,
+  vehicleType
+}));
+```
+
+**Reference**: ioredis documentation highlights custom retry strategies, pub/sub for distributed cache invalidation, and the importance of setting appropriate TTLs.
+
+### Express.js Middleware & Error Handling
+
+**Async Error Handler Wrapper** (API Routes):
+```typescript
+import { Request, Response, NextFunction } from 'express';
+
+const asyncHandler = (fn: Function) => (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  Promise.resolve(fn(req, res, next)).catch(next);
+};
+
+// Usage in route
+app.post('/api/v1/tickets', asyncHandler(async (req, res) => {
+  const ticket = await ticketIssuanceService.issue(req.body);
+  res.status(201).json(ticket);
+}));
+```
+
+**Tenant Context Middleware** (FR-013, FR-014, Multi-Tenant Isolation):
+```typescript
+import { Request, Response, NextFunction } from 'express';
+
+interface TenantRequest extends Request {
+  tenantId?: string;
+}
+
+const tenantContext = async (
+  req: TenantRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  const apiKey = req.headers['x-api-key'] as string;
+
+  if (!apiKey) {
+    return res.status(401).json({ error: 'Missing API key' });
+  }
+
+  // Validate API key and extract tenant
+  const tenant = await validateApiKey(apiKey);
+  if (!tenant) {
+    return res.status(403).json({ error: 'Invalid API key' });
+  }
+
+  req.tenantId = tenant.id;
+  next();
+};
+
+app.use('/api/v1', tenantContext);
+```
+
+**Global Error Handler** (Error Handling):
+```typescript
+class AppError extends Error {
+  constructor(
+    message: string,
+    public statusCode: number,
+    public isOperational = true
+  ) {
+    super(message);
+  }
+}
+
+app.use((err: Error | AppError, req: Request, res: Response, next: NextFunction) => {
+  console.error('Error:', err.message);
+  console.error('Stack:', err.stack);
+
+  const statusCode = err instanceof AppError ? err.statusCode : 500;
+  const message = err instanceof AppError && err.isOperational
+    ? err.message
+    : 'Internal Server Error';
+
+  res.status(statusCode).json({
+    error: message,
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+  });
+});
+```
+
+**Reference**: Express.js documentation emphasizes error-handling middleware must have 4 parameters `(err, req, res, next)`, should be registered last, and async route handlers need wrapper utilities.
 
 ## Project Structure
 
