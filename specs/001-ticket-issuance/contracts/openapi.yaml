@@ -1,0 +1,577 @@
+openapi: 3.1.0
+
+info:
+  title: Parking Management Platform - Ticket Issuance API
+  version: 1.0.0
+  description: |
+    RESTful API for issuing parking tickets at facility entry terminals.
+
+    This API enables drivers to obtain parking tickets with assigned spots upon
+    entering a parking facility. The system enforces multi-tenant isolation,
+    prevents concurrent spot assignment conflicts, and maintains audit trails.
+
+    ## Key Features
+    - Multi-tenant isolation (facility scoped to tenant)
+    - Real-time spot availability with pessimistic locking
+    - Support for 6 vehicle types (motorcycle, car, electric, truck/bus, accessible, family)
+    - Immutable audit events published to Kafka
+    - Adapter pattern for multiple ticket formats (magnetic stripe, QR, NFC)
+
+    ## Authentication
+    API requests require authentication via JWT bearer token or API key.
+    The token/key determines the tenant context and authorized facilities.
+
+  contact:
+    name: Platform Engineering Team
+    email: platform@parkingplatform.example
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://api.parkingplatform.example/v1
+    description: Production
+  - url: https://staging.api.parkingplatform.example/v1
+    description: Staging
+  - url: http://localhost:3000/v1
+    description: Local Development
+
+security:
+  - bearerAuth: []
+  - apiKeyAuth: []
+
+paths:
+  /facilities/{facility_id}/tickets:
+    post:
+      operationId: issueTicket
+      summary: Issue a parking ticket
+      description: |
+        Issues a parking ticket for a driver entering the facility.
+
+        The system:
+        1. Validates tenant authorization for the facility
+        2. Queries available spots matching the requested vehicle type
+        3. Assigns the first available spot using pessimistic locking
+        4. Generates a unique ticket identifier (UUIDv7)
+        5. Writes ticket data to the specified format (magnetic stripe, QR, NFC)
+        6. Publishes a TicketIssued event to Kafka
+        7. Returns ticket details to the caller
+
+        If no spots are available, returns 409 Conflict.
+
+      tags:
+        - Tickets
+
+      parameters:
+        - name: facility_id
+          in: path
+          required: true
+          description: Unique identifier of the parking facility
+          schema:
+            type: string
+            format: uuid
+          example: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+
+        - name: X-Idempotency-Key
+          in: header
+          required: false
+          description: |
+            Optional idempotency key to prevent duplicate ticket issuance.
+            If the same key is used within 24 hours, returns the previously issued ticket.
+          schema:
+            type: string
+            format: uuid
+          example: "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueTicketRequest'
+            examples:
+              car:
+                summary: Standard car
+                value:
+                  vehicle_type: "voiture"
+                  ticket_format: "magnetic_stripe"
+              electric:
+                summary: Electric vehicle
+                value:
+                  vehicle_type: "électrique"
+                  ticket_format: "qr_code"
+              motorcycle:
+                summary: Motorcycle
+                value:
+                  vehicle_type: "moto"
+                  ticket_format: "magnetic_stripe"
+
+      responses:
+        '201':
+          description: Ticket issued successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketResponse'
+              examples:
+                success:
+                  summary: Successful ticket issuance
+                  value:
+                    ticket_id: "3f333df6-90a4-4fda-8dd3-9485d27cee36"
+                    facility_id: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+                    spot_id: "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"
+                    spot_number: "A-101"
+                    vehicle_type: "CAR"
+                    issued_at: "2025-11-20T14:30:00Z"
+                    barcode: "MAG|3f333df6-90a4-4fda-8dd3-9485d27cee36|A-101"
+                    status: "ISSUED"
+
+        '400':
+          description: Invalid request (malformed JSON, invalid vehicle type, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_vehicle_type:
+                  summary: Invalid vehicle type
+                  value:
+                    error: "INVALID_VEHICLE_TYPE"
+                    message: "Vehicle type 'camion' is not supported. Must be one of: moto, voiture, électrique, camion/bus, handicapé, familial"
+                    details:
+                      allowed_types: ["moto", "voiture", "électrique", "camion/bus", "handicapé", "familial"]
+
+        '401':
+          description: Unauthorized (missing or invalid authentication)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missing_auth:
+                  summary: Missing authentication
+                  value:
+                    error: "UNAUTHORIZED"
+                    message: "Authentication required. Provide JWT bearer token or API key."
+
+        '403':
+          description: Forbidden (authenticated but not authorized for this facility)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                wrong_tenant:
+                  summary: Facility not owned by tenant
+                  value:
+                    error: "FORBIDDEN"
+                    message: "Facility 7c9e6679-7425-40de-944b-e07fc1f90ae7 does not belong to your tenant"
+
+        '404':
+          description: Facility not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                facility_not_found:
+                  summary: Facility does not exist
+                  value:
+                    error: "FACILITY_NOT_FOUND"
+                    message: "Facility with ID 7c9e6679-7425-40de-944b-e07fc1f90ae7 does not exist"
+
+        '409':
+          description: Conflict (no available spots for requested vehicle type)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                no_spots_available:
+                  summary: No available spots
+                  value:
+                    error: "NO_SPOTS_AVAILABLE"
+                    message: "No available parking spots for vehicle type 'voiture' at facility 7c9e6679-7425-40de-944b-e07fc1f90ae7"
+                    details:
+                      facility_id: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+                      vehicle_type: "voiture"
+                      total_spots: 150
+                      occupied_spots: 150
+
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                internal_error:
+                  summary: Unexpected error
+                  value:
+                    error: "INTERNAL_SERVER_ERROR"
+                    message: "An unexpected error occurred. Please contact support with correlation ID: abc123"
+                    correlation_id: "abc123"
+
+        '503':
+          description: Service unavailable (database or event bus down)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                service_unavailable:
+                  summary: Database connection lost
+                  value:
+                    error: "SERVICE_UNAVAILABLE"
+                    message: "Ticket issuance service is temporarily unavailable. Please retry in a few moments."
+
+  /facilities/{facility_id}/availability:
+    get:
+      operationId: getSpotAvailability
+      summary: Get spot availability by vehicle type
+      description: |
+        Queries real-time spot availability for a facility, grouped by vehicle type.
+
+        This endpoint supports entry terminal displays showing available spots
+        before a driver selects their vehicle type.
+
+        Results are cached in Redis for <200ms response time, with cache invalidation
+        on any spot status change.
+
+      tags:
+        - Availability
+
+      parameters:
+        - name: facility_id
+          in: path
+          required: true
+          description: Unique identifier of the parking facility
+          schema:
+            type: string
+            format: uuid
+          example: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+
+      responses:
+        '200':
+          description: Spot availability retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailabilityResponse'
+              examples:
+                mixed_availability:
+                  summary: Some spots available
+                  value:
+                    facility_id: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+                    facility_name: "Gare du Nord Parking"
+                    total_spots: 300
+                    occupied_spots: 180
+                    available_spots: 120
+                    availability_by_type:
+                      - vehicle_type: "MOTORCYCLE"
+                        total: 30
+                        available: 15
+                        occupied: 15
+                      - vehicle_type: "CAR"
+                        total: 200
+                        available: 80
+                        occupied: 120
+                      - vehicle_type: "ELECTRIC"
+                        total: 40
+                        available: 20
+                        occupied: 20
+                      - vehicle_type: "TRUCK_BUS"
+                        total: 10
+                        available: 0
+                        occupied: 10
+                      - vehicle_type: "ACCESSIBLE"
+                        total: 15
+                        available: 5
+                        occupied: 10
+                      - vehicle_type: "FAMILY"
+                        total: 5
+                        available: 0
+                        occupied: 5
+                    updated_at: "2025-11-20T14:29:55Z"
+
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+        '404':
+          description: Facility not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token issued by the authentication service.
+        Token must include 'tenant_id' claim to establish tenant context.
+
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        API key for terminal hardware authentication.
+        Key is scoped to a specific tenant and optionally to specific facilities.
+
+  schemas:
+    IssueTicketRequest:
+      type: object
+      required:
+        - vehicle_type
+      properties:
+        vehicle_type:
+          type: string
+          enum:
+            - moto
+            - voiture
+            - électrique
+            - camion/bus
+            - handicapé
+            - familial
+          description: |
+            Vehicle type for spot assignment.
+
+            Mapping to database enum:
+            - moto → MOTORCYCLE
+            - voiture → CAR
+            - électrique → ELECTRIC
+            - camion/bus → TRUCK_BUS
+            - handicapé → ACCESSIBLE
+            - familial → FAMILY
+          example: "voiture"
+
+        ticket_format:
+          type: string
+          enum:
+            - magnetic_stripe
+            - qr_code
+            - nfc
+          default: magnetic_stripe
+          description: |
+            Physical ticket encoding format.
+            Determines which TicketWriter adapter is used.
+          example: "magnetic_stripe"
+
+    TicketResponse:
+      type: object
+      required:
+        - ticket_id
+        - facility_id
+        - spot_id
+        - spot_number
+        - vehicle_type
+        - issued_at
+        - status
+      properties:
+        ticket_id:
+          type: string
+          format: uuid
+          description: Globally unique ticket identifier (UUIDv7 - time-sortable)
+          example: "3f333df6-90a4-4fda-8dd3-9485d27cee36"
+
+        facility_id:
+          type: string
+          format: uuid
+          description: Facility where ticket was issued
+          example: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+
+        spot_id:
+          type: string
+          format: uuid
+          description: Assigned parking spot identifier
+          example: "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"
+
+        spot_number:
+          type: string
+          description: Human-readable spot identifier (e.g., "A-101", "Level 2 - 42")
+          example: "A-101"
+
+        vehicle_type:
+          type: string
+          enum:
+            - MOTORCYCLE
+            - CAR
+            - ELECTRIC
+            - TRUCK_BUS
+            - ACCESSIBLE
+            - FAMILY
+          description: Database-normalized vehicle type
+          example: "CAR"
+
+        issued_at:
+          type: string
+          format: date-time
+          description: Ticket issuance timestamp (ISO 8601, UTC)
+          example: "2025-11-20T14:30:00Z"
+
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Ticket expiration timestamp (future feature, currently null)
+          example: null
+
+        barcode:
+          type: string
+          description: |
+            Physical ticket encoding data (format-specific).
+
+            Examples:
+            - Magnetic stripe: "MAG|{ticket_id}|{spot_number}"
+            - QR code: Base64-encoded JSON with ticket details
+            - NFC: NDEF payload with ticket URL
+          example: "MAG|3f333df6-90a4-4fda-8dd3-9485d27cee36|A-101"
+
+        status:
+          type: string
+          enum:
+            - ISSUED
+            - PAID
+            - VALIDATED
+            - EXPIRED
+            - CANCELLED
+          description: Ticket lifecycle status
+          example: "ISSUED"
+
+    AvailabilityResponse:
+      type: object
+      required:
+        - facility_id
+        - facility_name
+        - total_spots
+        - occupied_spots
+        - available_spots
+        - availability_by_type
+        - updated_at
+      properties:
+        facility_id:
+          type: string
+          format: uuid
+          example: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+
+        facility_name:
+          type: string
+          example: "Gare du Nord Parking"
+
+        total_spots:
+          type: integer
+          description: Total parking capacity
+          example: 300
+
+        occupied_spots:
+          type: integer
+          description: Number of currently occupied spots
+          example: 180
+
+        available_spots:
+          type: integer
+          description: Number of currently available spots
+          example: 120
+
+        availability_by_type:
+          type: array
+          items:
+            $ref: '#/components/schemas/VehicleTypeAvailability'
+          description: Per-vehicle-type availability breakdown
+
+        updated_at:
+          type: string
+          format: date-time
+          description: Last availability update timestamp
+          example: "2025-11-20T14:29:55Z"
+
+    VehicleTypeAvailability:
+      type: object
+      required:
+        - vehicle_type
+        - total
+        - available
+        - occupied
+      properties:
+        vehicle_type:
+          type: string
+          enum:
+            - MOTORCYCLE
+            - CAR
+            - ELECTRIC
+            - TRUCK_BUS
+            - ACCESSIBLE
+            - FAMILY
+          example: "CAR"
+
+        total:
+          type: integer
+          description: Total spots of this type
+          example: 200
+
+        available:
+          type: integer
+          description: Available spots of this type
+          example: 80
+
+        occupied:
+          type: integer
+          description: Occupied spots of this type
+          example: 120
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Machine-readable error code
+          enum:
+            - INVALID_VEHICLE_TYPE
+            - UNAUTHORIZED
+            - FORBIDDEN
+            - FACILITY_NOT_FOUND
+            - NO_SPOTS_AVAILABLE
+            - INTERNAL_SERVER_ERROR
+            - SERVICE_UNAVAILABLE
+          example: "NO_SPOTS_AVAILABLE"
+
+        message:
+          type: string
+          description: Human-readable error description
+          example: "No available parking spots for vehicle type 'voiture' at facility 7c9e6679-7425-40de-944b-e07fc1f90ae7"
+
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional error context (field-specific)
+          example:
+            facility_id: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+            vehicle_type: "voiture"
+
+        correlation_id:
+          type: string
+          description: Unique request identifier for support and logging
+          example: "abc123"
+
+tags:
+  - name: Tickets
+    description: Ticket issuance operations
+  - name: Availability
+    description: Real-time spot availability queries
