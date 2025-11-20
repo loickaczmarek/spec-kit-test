@@ -21,8 +21,8 @@ This guide helps developers set up a local development environment for the ticke
 
 ```bash
 # Clone the repository (replace with actual repo URL)
-git clone https://github.com/your-org/parking-platform.git
-cd parking-platform
+git clone https://github.com/loickaczmarek/spec-kit-test.git
+cd spec-kit-test
 
 # Switch to the feature branch
 git checkout 001-ticket-issuance
