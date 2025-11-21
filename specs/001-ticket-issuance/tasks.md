@@ -19,18 +19,18 @@
 
 ---
 
-## Phase 1: Setup (Shared Infrastructure)
+## Phase 1: Setup (Shared Infrastructure) ✅
 
 **Purpose**: Project initialization and basic structure per plan.md
 
-- [ ] T001 Create project directory structure with bounded contexts (src/shared/, src/facility/, src/ticketing/, src/infrastructure/, src/api/, tests/)
-- [ ] T002 Initialize Node.js 20 LTS project with TypeScript 5.3 and configure tsconfig.json
-- [ ] T003 [P] Install core dependencies (Express 5.x, Prisma, KafkaJS, ioredis v5.4.0+, Winston)
-- [ ] T004 [P] Configure ESLint and Prettier with TypeScript rules
-- [ ] T005 [P] Setup Jest testing framework with ts-jest and Supertest
-- [ ] T006 [P] Create Docker Compose file for PostgreSQL 16, Redis 7, and Kafka (docker/docker-compose.yml)
-- [ ] T007 Configure environment variables template (.env.example) with DATABASE_URL, REDIS_URL, KAFKA_BROKER
-- [ ] T008 Create README.md with quickstart reference pointing to specs/001-ticket-issuance/quickstart.md
+- [x] T001 Create project directory structure with bounded contexts (src/shared/, src/facility/, src/ticketing/, src/infrastructure/, src/api/, tests/)
+- [x] T002 Initialize Node.js 20 LTS project with TypeScript 5.3 and configure tsconfig.json
+- [x] T003 [P] Install core dependencies (Express 5.x, Prisma, KafkaJS, ioredis v5.4.0+, Winston)
+- [x] T004 [P] Configure ESLint and Prettier with TypeScript rules
+- [x] T005 [P] Setup Jest testing framework with ts-jest and Supertest
+- [x] T006 [P] Create Docker Compose file for PostgreSQL 16, Redis 7, and Kafka (docker/docker-compose.yml)
+- [x] T007 Configure environment variables template (.env.example) with DATABASE_URL, REDIS_URL, KAFKA_BROKER
+- [x] T008 Create README.md with quickstart reference pointing to specs/001-ticket-issuance/quickstart.md
 
 ---
 
@@ -42,13 +42,13 @@
 
 ### Database & Schema
 
-- [ ] T009 Create Prisma schema file at src/infrastructure/database/prisma/schema.prisma with all enums (TenantStatus, FacilityStatus, VehicleType, SpotStatus, TicketStatus, AuditEventType)
-- [ ] T010 [P] Define Tenant model in Prisma schema with fields (id, name, slug, status, created_at) and indexes per data-model.md
-- [ ] T011 [P] Define Facility model in Prisma schema with tenant relationship and indexes (tenant_id, status)
-- [ ] T012 [P] Define Spot model in Prisma schema with composite index (facility_id, vehicle_type, status) and unique constraint (facility_id, spot_number)
-- [ ] T013 [P] Define Ticket model in Prisma schema with indexes (tenant_id, facility_id, spot_id, issued_at, status)
-- [ ] T014 [P] Define TicketAuditLog model in Prisma schema with JSONB metadata field and GIN index
-- [ ] T015 Generate Prisma client and run initial migration to create all tables
+- [x] T009 Create Prisma schema file at src/infrastructure/database/prisma/schema.prisma with all enums (TenantStatus, FacilityStatus, VehicleType, SpotStatus, TicketStatus, AuditEventType)
+- [x] T010 [P] Define Tenant model in Prisma schema with fields (id, name, slug, status, created_at) and indexes per data-model.md
+- [x] T011 [P] Define Facility model in Prisma schema with tenant relationship and indexes (tenant_id, status)
+- [x] T012 [P] Define Spot model in Prisma schema with composite index (facility_id, vehicle_type, status) and unique constraint (facility_id, spot_number)
+- [x] T013 [P] Define Ticket model in Prisma schema with indexes (tenant_id, facility_id, spot_id, issued_at, status)
+- [x] T014 [P] Define TicketAuditLog model in Prisma schema with JSONB metadata field and GIN index
+- [x] T015 Generate Prisma client and run initial migration to create all tables
 - [ ] T016 Create database seed script (src/infrastructure/database/seed.ts) with sample tenant, facilities, and 85+ spots per facility
 
 ### Shared Kernel (Value Objects & Events)

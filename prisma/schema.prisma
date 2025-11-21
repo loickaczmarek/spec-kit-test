@@ -1,0 +1,167 @@
+// Prisma schema for Parking Platform - Ticket Issuance
+// Database: PostgreSQL 16
+// Generated: 2025-11-21
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum FacilityStatus {
+  ACTIVE
+  MAINTENANCE
+  CLOSED
+}
+
+enum VehicleType {
+  MOTORCYCLE
+  CAR
+  ELECTRIC
+  TRUCK_BUS
+  ACCESSIBLE
+  FAMILY
+}
+
+enum SpotStatus {
+  AVAILABLE
+  OCCUPIED
+  RESERVED
+  MAINTENANCE
+  OUT_OF_SERVICE
+}
+
+enum TicketStatus {
+  ISSUED
+  PAID
+  VALIDATED
+  EXPIRED
+  CANCELLED
+}
+
+enum AuditEventType {
+  ISSUED
+  PAID
+  VALIDATED
+  EXPIRED
+  CANCELLED
+}
+
+// ============================================================================
+// SHARED KERNEL
+// ============================================================================
+
+model Tenant {
+  id         String       @id @default(uuid())
+  name       String
+  slug       String       @unique
+  status     TenantStatus @default(ACTIVE)
+  created_at DateTime     @default(now())
+
+  facilities Facility[]
+  tickets    Ticket[]
+
+  @@map("tenants")
+}
+
+// ============================================================================
+// FACILITY BOUNDED CONTEXT
+// ============================================================================
+
+model Facility {
+  id          String         @id @default(uuid())
+  tenant_id   String
+  name        String
+  address     String
+  timezone    String
+  total_spots Int
+  status      FacilityStatus @default(ACTIVE)
+  created_at  DateTime       @default(now())
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id])
+  spots  Spot[]
+  tickets Ticket[]
+
+  @@index([tenant_id])
+  @@index([status])
+  @@map("facilities")
+}
+
+model Spot {
+  id           String      @id @default(uuid())
+  facility_id  String
+  spot_number  String
+  vehicle_type VehicleType
+  status       SpotStatus  @default(AVAILABLE)
+  version      Int         @default(1)
+  created_at   DateTime    @default(now())
+  updated_at   DateTime    @updatedAt
+
+  facility Facility @relation(fields: [facility_id], references: [id])
+  tickets  Ticket[]
+
+  @@unique([facility_id, spot_number])
+  @@index([facility_id, vehicle_type, status])
+  @@map("facility_spots")
+}
+
+// ============================================================================
+// TICKETING BOUNDED CONTEXT
+// ============================================================================
+
+model Ticket {
+  id           String       @id @default(uuid())
+  tenant_id    String
+  facility_id  String
+  spot_id      String
+  vehicle_type VehicleType
+  issued_at    DateTime     @default(now())
+  expires_at   DateTime?
+  status       TicketStatus @default(ISSUED)
+  barcode      String?
+  created_at   DateTime     @default(now())
+  updated_at   DateTime     @updatedAt
+
+  tenant      Tenant           @relation(fields: [tenant_id], references: [id])
+  facility    Facility         @relation(fields: [facility_id], references: [id])
+  spot        Spot             @relation(fields: [spot_id], references: [id])
+  audit_logs  TicketAuditLog[]
+
+  @@index([tenant_id])
+  @@index([facility_id])
+  @@index([spot_id])
+  @@index([issued_at])
+  @@index([status])
+  @@map("tickets")
+}
+
+model TicketAuditLog {
+  id         String         @id @default(uuid())
+  ticket_id  String
+  tenant_id  String
+  event_type AuditEventType
+  timestamp  DateTime       @default(now())
+  actor      String?
+  metadata   Json?
+  created_at DateTime       @default(now())
+
+  ticket Ticket @relation(fields: [ticket_id], references: [id])
+
+  @@index([ticket_id])
+  @@index([tenant_id])
+  @@index([timestamp])
+  @@map("ticket_audit_logs")
+}
