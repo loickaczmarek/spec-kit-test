@@ -1,10 +1,10 @@
 # Tasks: Émission de ticket à l'entrée
 
 **Feature Branch**: `001-ticket-issuance`
-**Generated**: 2025-11-20
+**Generated**: 2025-11-21
 **Input**: Design documents from `/specs/001-ticket-issuance/`
 
-**Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/openapi.yaml, quickstart.md
+**Prerequisites**: plan.md ✓, spec.md ✓, research.md ✓, data-model.md ✓, contracts/openapi.yaml ✓, quickstart.md ✓
 
 **Tests**: Tests are explicitly included based on the feature specification requiring tests for attribution, tenant isolation, and spot exhaustion.
 
