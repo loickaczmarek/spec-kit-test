@@ -82,6 +82,7 @@ describe('POST /v1/facilities/:facility_id/tickets - Electric Vehicle Ticket Iss
       const response = await request(app)
         .post(`/v1/facilities/${testFacilityId}/tickets`)
         .set('X-Tenant-ID', testTenantId)
+        .set('X-API-Key', `test-api-key-${testTenantId}`)
         .send(requestBody)
         .expect(201);
 
@@ -116,6 +117,7 @@ describe('POST /v1/facilities/:facility_id/tickets - Electric Vehicle Ticket Iss
       const response = await request(app)
         .post(`/v1/facilities/${testFacilityId}/tickets`)
         .set('X-Tenant-ID', testTenantId)
+        .set('X-API-Key', `test-api-key-${testTenantId}`)
         .send(requestBody)
         .expect(201);
 
@@ -137,6 +139,7 @@ describe('POST /v1/facilities/:facility_id/tickets - Electric Vehicle Ticket Iss
         const response = await request(app)
           .post(`/v1/facilities/${testFacilityId}/tickets`)
           .set('X-Tenant-ID', testTenantId)
+        .set('X-API-Key', `test-api-key-${testTenantId}`)
           .send(requestBody)
           .expect(201);
         tickets.push(response.body);
@@ -192,6 +195,7 @@ describe('POST /v1/facilities/:facility_id/tickets - Electric Vehicle Ticket Iss
         await request(app)
           .post(`/v1/facilities/${testFacilityId}/tickets`)
           .set('X-Tenant-ID', testTenantId)
+        .set('X-API-Key', `test-api-key-${testTenantId}`)
           .send(requestBody)
           .expect(201);
       }
@@ -200,6 +204,7 @@ describe('POST /v1/facilities/:facility_id/tickets - Electric Vehicle Ticket Iss
       const response = await request(app)
         .post(`/v1/facilities/${testFacilityId}/tickets`)
         .set('X-Tenant-ID', testTenantId)
+        .set('X-API-Key', `test-api-key-${testTenantId}`)
         .send(requestBody)
         .expect(409); // Should fail - no ELECTRIC spots available
 

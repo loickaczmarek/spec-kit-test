@@ -82,6 +82,7 @@ describe('POST /v1/facilities/:facility_id/tickets - Accessible Spot Ticket Issu
       const response = await request(app)
         .post(`/v1/facilities/${testFacilityId}/tickets`)
         .set('X-Tenant-ID', testTenantId)
+        .set('X-API-Key', `test-api-key-${testTenantId}`)
         .send(requestBody)
         .expect(201);
 
@@ -116,12 +117,14 @@ describe('POST /v1/facilities/:facility_id/tickets - Accessible Spot Ticket Issu
       const response1 = await request(app)
         .post(`/v1/facilities/${testFacilityId}/tickets`)
         .set('X-Tenant-ID', testTenantId)
+        .set('X-API-Key', `test-api-key-${testTenantId}`)
         .send(requestBody)
         .expect(201);
 
       const response2 = await request(app)
         .post(`/v1/facilities/${testFacilityId}/tickets`)
         .set('X-Tenant-ID', testTenantId)
+        .set('X-API-Key', `test-api-key-${testTenantId}`)
         .send(requestBody)
         .expect(201);
 
@@ -157,6 +160,7 @@ describe('POST /v1/facilities/:facility_id/tickets - Accessible Spot Ticket Issu
       const response = await request(app)
         .post(`/v1/facilities/${testFacilityId}/tickets`)
         .set('X-Tenant-ID', testTenantId)
+        .set('X-API-Key', `test-api-key-${testTenantId}`)
         .send(requestBody)
         .expect(201);
 
@@ -187,6 +191,7 @@ describe('POST /v1/facilities/:facility_id/tickets - Accessible Spot Ticket Issu
       const response = await request(app)
         .post(`/v1/facilities/${testFacilityId}/tickets`)
         .set('X-Tenant-ID', testTenantId)
+        .set('X-API-Key', `test-api-key-${testTenantId}`)
         .send(requestBody)
         .expect(409); // Should fail even though CAR spots available
 

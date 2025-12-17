@@ -82,6 +82,7 @@ describe('POST /v1/facilities/:facility_id/tickets - Motorcycle Ticket Issuance'
       const response = await request(app)
         .post(`/v1/facilities/${testFacilityId}/tickets`)
         .set('X-Tenant-ID', testTenantId)
+        .set('X-API-Key', `test-api-key-${testTenantId}`)
         .send(requestBody)
         .expect(201);
 
@@ -115,6 +116,7 @@ describe('POST /v1/facilities/:facility_id/tickets - Motorcycle Ticket Issuance'
       const response = await request(app)
         .post(`/v1/facilities/${testFacilityId}/tickets`)
         .set('X-Tenant-ID', testTenantId)
+        .set('X-API-Key', `test-api-key-${testTenantId}`)
         .send(requestBody)
         .expect(201);
 
@@ -136,6 +138,7 @@ describe('POST /v1/facilities/:facility_id/tickets - Motorcycle Ticket Issuance'
         const response = await request(app)
           .post(`/v1/facilities/${testFacilityId}/tickets`)
           .set('X-Tenant-ID', testTenantId)
+        .set('X-API-Key', `test-api-key-${testTenantId}`)
           .send(requestBody)
           .expect(201);
         responses.push(response.body);
@@ -182,6 +185,7 @@ describe('POST /v1/facilities/:facility_id/tickets - Motorcycle Ticket Issuance'
       const response = await request(app)
         .post(`/v1/facilities/${testFacilityId}/tickets`)
         .set('X-Tenant-ID', testTenantId)
+        .set('X-API-Key', `test-api-key-${testTenantId}`)
         .send(requestBody)
         .expect(409); // No available MOTORCYCLE spots, even though CAR spot available
 

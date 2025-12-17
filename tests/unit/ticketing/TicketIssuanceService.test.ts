@@ -64,6 +64,20 @@ describe('TicketIssuanceService', () => {
 
       mockFacilityRepository.findById.mockResolvedValue(mockFacility);
 
+      // Mock $queryRaw to return an available spot
+      jest.spyOn(prisma, '$queryRaw').mockResolvedValue([
+        {
+          id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+          facility_id: testFacilityId.toString(),
+          spot_number: 'A-001',
+          vehicle_type: 'CAR',
+          status: 'AVAILABLE',
+          version: 1,
+          created_at: new Date(),
+          updated_at: new Date(),
+        },
+      ]);
+
       // Mock Prisma transaction (simplified for unit test)
       // In real scenario, we'd use a test database or more sophisticated mocking
       jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any) => {
@@ -116,6 +130,20 @@ describe('TicketIssuanceService', () => {
       );
 
       mockFacilityRepository.findById.mockResolvedValue(mockFacility);
+
+      // Mock $queryRaw to return an available spot
+      jest.spyOn(prisma, '$queryRaw').mockResolvedValue([
+        {
+          id: 'c3d4e5f6-a7b8-9012-cdef-012345678901',
+          facility_id: testFacilityId.toString(),
+          spot_number: 'A-001',
+          vehicle_type: 'CAR',
+          status: 'AVAILABLE',
+          version: 1,
+          created_at: new Date(),
+          updated_at: new Date(),
+        },
+      ]);
 
       jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any) => {
         const mockTx = {
@@ -205,6 +233,9 @@ describe('TicketIssuanceService', () => {
 
       mockFacilityRepository.findById.mockResolvedValue(mockFacility);
 
+      // Mock $queryRaw to return no available spots
+      jest.spyOn(prisma, '$queryRaw').mockResolvedValue([]);
+
       // Mock transaction with no available spots
       jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any) => {
         const mockTx = {
@@ -246,6 +277,20 @@ describe('TicketIssuanceService', () => {
       );
 
       mockFacilityRepository.findById.mockResolvedValue(mockFacility);
+
+      // Mock $queryRaw to return an available spot for any vehicle type
+      jest.spyOn(prisma, '$queryRaw').mockResolvedValue([
+        {
+          id: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
+          facility_id: testFacilityId.toString(),
+          spot_number: 'M-001',
+          vehicle_type: 'CAR', // Will be called multiple times with different types
+          status: 'AVAILABLE',
+          version: 1,
+          created_at: new Date(),
+          updated_at: new Date(),
+        },
+      ] as any);
 
       jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any) => {
         const mockTx = {
@@ -295,6 +340,20 @@ describe('TicketIssuanceService', () => {
       );
 
       mockFacilityRepository.findById.mockResolvedValue(mockFacility);
+
+      // Mock $queryRaw to return an available spot
+      jest.spyOn(prisma, '$queryRaw').mockResolvedValue([
+        {
+          id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+          facility_id: testFacilityId.toString(),
+          spot_number: 'A-001',
+          vehicle_type: 'CAR',
+          status: 'AVAILABLE',
+          version: 1,
+          created_at: new Date(),
+          updated_at: new Date(),
+        },
+      ]);
 
       jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any) => {
         const mockTx = {

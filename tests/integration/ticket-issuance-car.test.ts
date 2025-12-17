@@ -92,7 +92,8 @@ describe('POST /v1/facilities/:facility_id/tickets - Car Ticket Issuance', () =>
       // Act
       const response = await request(app)
         .post(`/v1/facilities/${testFacilityId}/tickets`)
-        .set('X-Tenant-ID', testTenantId) // Mock tenant context
+        .set('X-Tenant-ID', testTenantId)
+        .set('X-API-Key', `test-api-key-${testTenantId}`) // Mock tenant context
         .send(requestBody)
         .expect(201);
 
@@ -141,18 +142,21 @@ describe('POST /v1/facilities/:facility_id/tickets - Car Ticket Issuance', () =>
       const response1 = await request(app)
         .post(`/v1/facilities/${testFacilityId}/tickets`)
         .set('X-Tenant-ID', testTenantId)
+        .set('X-API-Key', `test-api-key-${testTenantId}`)
         .send(requestBody)
         .expect(201);
 
       const response2 = await request(app)
         .post(`/v1/facilities/${testFacilityId}/tickets`)
         .set('X-Tenant-ID', testTenantId)
+        .set('X-API-Key', `test-api-key-${testTenantId}`)
         .send(requestBody)
         .expect(201);
 
       const response3 = await request(app)
         .post(`/v1/facilities/${testFacilityId}/tickets`)
         .set('X-Tenant-ID', testTenantId)
+        .set('X-API-Key', `test-api-key-${testTenantId}`)
         .send(requestBody)
         .expect(201);
 
@@ -182,6 +186,7 @@ describe('POST /v1/facilities/:facility_id/tickets - Car Ticket Issuance', () =>
       const response = await request(app)
         .post(`/v1/facilities/${testFacilityId}/tickets`)
         .set('X-Tenant-ID', testTenantId)
+        .set('X-API-Key', `test-api-key-${testTenantId}`)
         .send(requestBody)
         .expect(201);
 
@@ -202,6 +207,7 @@ describe('POST /v1/facilities/:facility_id/tickets - Car Ticket Issuance', () =>
       const response = await request(app)
         .post(`/v1/facilities/${testFacilityId}/tickets`)
         .set('X-Tenant-ID', testTenantId)
+        .set('X-API-Key', `test-api-key-${testTenantId}`)
         .send(requestBody)
         .expect(400);
 
@@ -221,6 +227,7 @@ describe('POST /v1/facilities/:facility_id/tickets - Car Ticket Issuance', () =>
       const response = await request(app)
         .post(`/v1/facilities/${testFacilityId}/tickets`)
         .set('X-Tenant-ID', testTenantId)
+        .set('X-API-Key', `test-api-key-${testTenantId}`)
         .send(requestBody)
         .expect(400);
 
@@ -258,6 +265,7 @@ describe('POST /v1/facilities/:facility_id/tickets - Car Ticket Issuance', () =>
       const response = await request(app)
         .post(`/v1/facilities/${nonExistentFacilityId}/tickets`)
         .set('X-Tenant-ID', testTenantId)
+        .set('X-API-Key', `test-api-key-${testTenantId}`)
         .send(requestBody)
         .expect(404);
 

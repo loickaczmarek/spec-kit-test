@@ -27,9 +27,9 @@ export class PrismaSpotRepository implements ISpotRepository {
   async findAvailableSpot(facilityId: FacilityId, vehicleType: VehicleType): Promise<Spot | null> {
     // Use $queryRaw for SELECT FOR UPDATE NOWAIT
     const spots = await prisma.$queryRaw<any[]>`
-      SELECT * FROM "Spot"
+      SELECT * FROM "facility_spots"
       WHERE facility_id = ${facilityId.toString()}
-        AND vehicle_type = ${vehicleType}::text
+        AND vehicle_type::text = ${vehicleType}
         AND status = 'AVAILABLE'
       ORDER BY spot_number ASC
       LIMIT 1
