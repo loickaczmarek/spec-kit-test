@@ -96,9 +96,9 @@ export class TicketIssuanceService {
     const result = await executeWithRetry(async () => {
       return await prisma.$transaction(
         async (tx) => {
-          // Find and lock an available spot (pessimistic lock)
+          // Find and lock an available spot (pessimistic lock with tenant isolation)
           const spotRepo = new PrismaSpotRepository();
-          const spot = await spotRepo.findAvailableSpot(facilityId, vehicleType);
+          const spot = await spotRepo.findAvailableSpot(facilityId, vehicleType, tenantId);
 
           if (!spot) {
             throw new NoSpotsAvailableError(facilityId, vehicleType, facility.name);

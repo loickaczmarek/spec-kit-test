@@ -86,10 +86,11 @@ describe('SpotAvailabilityService', () => {
         `spot:avail:${testFacilityId.toString()}:ELECTRIC`
       );
 
-      // Verify database query
+      // Verify database query (with undefined tenantId since not provided in this test)
       expect(mockSpotRepository.countAvailableSpots).toHaveBeenCalledWith(
         testFacilityId,
-        VehicleType.ELECTRIC
+        VehicleType.ELECTRIC,
+        undefined
       );
 
       // Verify cache update with 30s TTL
@@ -127,10 +128,11 @@ describe('SpotAvailabilityService', () => {
       // Assert
       expect(result).toBe(15);
 
-      // Verify database fallback
+      // Verify database fallback (with undefined tenantId)
       expect(mockSpotRepository.countAvailableSpots).toHaveBeenCalledWith(
         testFacilityId,
-        VehicleType.ACCESSIBLE
+        VehicleType.ACCESSIBLE,
+        undefined
       );
     });
 
