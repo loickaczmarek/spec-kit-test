@@ -139,7 +139,7 @@
 
 ---
 
-## Phase 4: User Story 2 - Entry with No Available Spots (Priority: P2)
+## Phase 4: User Story 2 - Entry with No Available Spots (Priority: P2) ✅
 
 **Goal**: Reject ticket requests when no spots available for requested vehicle type with clear error messaging
 
@@ -147,22 +147,24 @@
 
 **User Story Reference**: spec.md lines 68-81 (3 acceptance scenarios for different vehicle types)
 
+**✅ IMPLEMENTATION COMPLETE**: Error handling for spot exhaustion operational (T061-T069)
+
 ### Implementation for User Story 2
 
-- [ ] T061 [US2] Update SpotAvailabilityService to return null when no available spots found (no throw during query)
-- [ ] T062 [US2] Update TicketIssuanceService to throw NoSpotsAvailableError when SpotAvailabilityService returns null
-- [ ] T063 [US2] Create NoSpotsAvailableError class in src/shared/errors/NoSpotsAvailableError.ts extending AppError with 409 status code
-- [ ] T064 [US2] Update ticket routes error handler to map NoSpotsAvailableError to 409 Conflict response with error code "NO_SPOTS_AVAILABLE"
-- [ ] T065 [US2] Implement error response format per openapi.yaml (error field with message "Aucune place disponible pour type véhicule: {type}")
+- [x] T061 [US2] Update SpotAvailabilityService to return null when no available spots found (no throw during query)
+- [x] T062 [US2] Update TicketIssuanceService to throw NoSpotsAvailableError when SpotAvailabilityService returns null
+- [x] T063 [US2] Create NoSpotsAvailableError class in src/shared/errors/NoSpotsAvailableError.ts extending AppError with 409 status code
+- [x] T064 [US2] Update ticket routes error handler to map NoSpotsAvailableError to 409 Conflict response with error code "NO_SPOTS_AVAILABLE"
+- [x] T065 [US2] Implement error response format per openapi.yaml (error field with message "Aucune place disponible pour type véhicule: {type}")
 
 ### Testing for User Story 2
 
-- [ ] T066 [P] [US2] Create integration test for car rejection in tests/integration/ticket-rejection-car.test.ts (mark all car spots OCCUPIED, verify 409 response)
-- [ ] T067 [P] [US2] Create integration test for motorcycle rejection in tests/integration/ticket-rejection-motorcycle.test.ts
-- [ ] T068 [P] [US2] Create integration test for electric rejection in tests/integration/ticket-rejection-electric.test.ts
-- [ ] T069 [US2] Create unit test for NoSpotsAvailableError handling in tests/unit/ticketing/TicketIssuanceService-rejection.test.ts
+- [x] T066 [P] [US2] Create integration test for car rejection in tests/integration/ticket-rejection-car.test.ts (mark all car spots OCCUPIED, verify 409 response)
+- [x] T067 [P] [US2] Create integration test for motorcycle rejection in tests/integration/ticket-rejection-motorcycle.test.ts
+- [x] T068 [P] [US2] Create integration test for electric rejection in tests/integration/ticket-rejection-electric.test.ts
+- [x] T069 [US2] Create unit test for NoSpotsAvailableError handling in tests/unit/ticketing/TicketIssuanceService-rejection.test.ts
 
-**Checkpoint**: User Story 2 complete - system properly rejects entries when facility full for requested vehicle type
+**✅ Checkpoint**: User Story 2 complete - system properly rejects entries when facility full for requested vehicle type. 3 integration tests verify rejection for CAR, MOTORCYCLE, and ELECTRIC vehicle types with proper 409 Conflict responses. 1 unit test validates NoSpotsAvailableError class properties and behavior. All 4 tests implemented and passing (T066-T069).
 
 ---
 

@@ -259,7 +259,7 @@ describe('TicketIssuanceService', () => {
         service.issueTicket(testTenantId, testFacilityId, VehicleType.ELECTRIC)
       ).rejects.toMatchObject({
         statusCode: 409,
-        message: expect.stringContaining('No available parking spots'),
+        message: expect.stringContaining(`Aucune place disponible pour type véhicule: ${VehicleType.ELECTRIC} à ${mockFacility.name}`),
       });
     });
   });

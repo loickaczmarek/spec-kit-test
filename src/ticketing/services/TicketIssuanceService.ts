@@ -10,6 +10,7 @@ import { prisma } from '../../infrastructure/database/PrismaClient';
 import { Prisma } from '@prisma/client';
 import { Logger } from '../../infrastructure/logging/WinstonLogger';
 import { AppError } from '../../shared/errors/AppError';
+import { NoSpotsAvailableError } from '../../shared/errors/NoSpotsAvailableError';
 
 /**
  * Transaction retry logic with exponential backoff
@@ -100,15 +101,7 @@ export class TicketIssuanceService {
           const spot = await spotRepo.findAvailableSpot(facilityId, vehicleType);
 
           if (!spot) {
-            throw new AppError(
-              `No available parking spots for vehicle type '${vehicleType}' at facility ${facility.name}`,
-              409,
-              true,
-              {
-                facility_id: facilityId.toString(),
-                vehicle_type: vehicleType,
-              }
-            );
+            throw new NoSpotsAvailableError(facilityId, vehicleType, facility.name);
           }
 
           // Update spot status to OCCUPIED (within transaction)

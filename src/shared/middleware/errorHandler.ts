@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../errors/AppError';
+import { NoSpotsAvailableError } from '../errors/NoSpotsAvailableError';
 import { Logger } from '../../infrastructure/logging/WinstonLogger';
 
 /**
@@ -31,7 +32,9 @@ export const errorHandler = (
 
   // Build error response
   const errorResponse: any = {
-    error: err.name || 'INTERNAL_SERVER_ERROR',
+    error: err instanceof NoSpotsAvailableError
+      ? err.errorCode
+      : (err.name || 'INTERNAL_SERVER_ERROR'),
     message,
     correlation_id: correlationId,
   };
