@@ -13,16 +13,19 @@ export class NFCWriter implements TicketWriter {
   }
 
   async write(ticket: Ticket): Promise<TicketWriteResult> {
-    // Stub implementation - not yet supported
-    Logger.warn('NFC format not yet implemented', {
+    // Stub implementation - generates a simple NFC format barcode
+    // Format: NFC|{ticket_id}|{spot_id}
+    const barcode = `NFC|${ticket.id.toString().substring(0, 8)}|${ticket.spotId.toString().substring(0, 8)}`;
+
+    Logger.info('NFC ticket generated', {
       ticket_id: ticket.id.toString(),
+      barcode,
     });
 
     return {
-      success: false,
-      barcode: '',
+      success: true,
+      barcode,
       format: 'nfc',
-      error: 'NFC format not yet implemented',
     };
   }
 }

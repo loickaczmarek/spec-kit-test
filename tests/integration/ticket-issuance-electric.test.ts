@@ -210,7 +210,7 @@ describe('POST /v1/facilities/:facility_id/tickets - Electric Vehicle Ticket Iss
 
       // Assert
       expect(response.body).toHaveProperty('error');
-      expect(response.body.error).toContain('ELECTRIC');
+      expect(response.body.message).toContain('ELECTRIC');
     });
   });
 });

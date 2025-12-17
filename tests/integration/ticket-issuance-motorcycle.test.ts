@@ -191,7 +191,7 @@ describe('POST /v1/facilities/:facility_id/tickets - Motorcycle Ticket Issuance'
 
       // Assert
       expect(response.body).toHaveProperty('error');
-      expect(response.body.error).toContain('MOTORCYCLE');
+      expect(response.body.message).toContain('MOTORCYCLE');
     });
   });
 });

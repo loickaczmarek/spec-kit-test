@@ -213,7 +213,7 @@ describe('POST /v1/facilities/:facility_id/tickets - Car Ticket Issuance', () =>
 
       // Assert
       expect(response.body).toHaveProperty('error');
-      expect(response.body.error).toContain('vehicle_type');
+      expect(response.body.message).toContain('vehicle_type');
     });
 
     it('should return 400 if vehicle_type is invalid', async () => {

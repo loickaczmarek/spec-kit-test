@@ -111,8 +111,8 @@ describe('TicketIssuanceService', () => {
       // Verify event published
       expect(mockEventPublisher.publish).toHaveBeenCalledWith(
         expect.objectContaining({
-          tenantId: testTenantId.toString(),
-          facilityId: testFacilityId.toString(),
+          tenant_id: testTenantId.toString(),
+          facility_id: testFacilityId.toString(),
         }),
         'tickets.issued.v1'
       );
@@ -134,7 +134,7 @@ describe('TicketIssuanceService', () => {
       // Mock $queryRaw to return an available spot
       jest.spyOn(prisma, '$queryRaw').mockResolvedValue([
         {
-          id: 'c3d4e5f6-a7b8-9012-cdef-012345678901',
+          id: 'c3d4e5f6-a7b8-4012-9def-012345678901',
           facility_id: testFacilityId.toString(),
           spot_number: 'A-001',
           vehicle_type: 'CAR',

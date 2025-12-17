@@ -192,7 +192,7 @@ describe('POST /v1/facilities/:facility_id/tickets - Family Spot Ticket Issuance
 
       // Assert
       expect(response.body).toHaveProperty('error');
-      expect(response.body.error).toContain('FAMILY');
+      expect(response.body.message).toContain('FAMILY');
 
       // Verify CAR spots still available
       const carAvailable = await prisma.spot.count({

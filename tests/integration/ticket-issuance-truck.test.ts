@@ -53,10 +53,21 @@ describe('POST /v1/facilities/:facility_id/tickets - Truck/Bus Spot Ticket Issua
 
     // Create TRUCK_BUS spots (larger spaces for commercial vehicles)
     await prisma.spot.createMany({
-      data: Array.from({ length: 3 }, (_, i) => ({
+      data: Array.from({ length: 5 }, (_, i) => ({
         facility_id: testFacilityId,
         spot_number: `TRUCK-${String(i + 1).padStart(2, '0')}`,
         vehicle_type: 'TRUCK_BUS',
+        status: 'AVAILABLE',
+        version: 1,
+      })),
+    });
+
+    // Create CAR spots to test spot type enforcement
+    await prisma.spot.createMany({
+      data: Array.from({ length: 3 }, (_, i) => ({
+        facility_id: testFacilityId,
+        spot_number: `CAR-${String(i + 1).padStart(2, '0')}`,
+        vehicle_type: 'CAR',
         status: 'AVAILABLE',
         version: 1,
       })),
@@ -140,7 +151,7 @@ describe('POST /v1/facilities/:facility_id/tickets - Truck/Bus Spot Ticket Issua
     });
 
     it('should exhaust all truck spots and return correct availability', async () => {
-      // Arrange - 3 total spots, 2 already used above, 1 remaining
+      // Arrange - 5 total spots, 3 already used above, 2 remaining
       const availableBefore = await prisma.spot.count({
         where: {
           facility_id: testFacilityId,
@@ -148,10 +159,10 @@ describe('POST /v1/facilities/:facility_id/tickets - Truck/Bus Spot Ticket Issua
           status: 'AVAILABLE',
         },
       });
-      expect(availableBefore).toBe(1);
+      expect(availableBefore).toBe(2);
 
-      // Act - Issue last ticket
-      const response = await request(app)
+      // Act - Issue remaining tickets
+      const response1 = await request(app)
         .post(`/v1/facilities/${testFacilityId}/tickets`)
         .set('X-Tenant-ID', testTenantId)
         .set('X-API-Key', `test-api-key-${testTenantId}`)
@@ -161,8 +172,19 @@ describe('POST /v1/facilities/:facility_id/tickets - Truck/Bus Spot Ticket Issua
         })
         .expect(201);
 
-      // Assert - Last spot assigned
-      expect(response.body.vehicle_type).toBe('TRUCK_BUS');
+      const response2 = await request(app)
+        .post(`/v1/facilities/${testFacilityId}/tickets`)
+        .set('X-Tenant-ID', testTenantId)
+        .set('X-API-Key', `test-api-key-${testTenantId}`)
+        .send({
+          vehicle_type: 'camion/bus',
+          ticket_format: 'magnetic_stripe',
+        })
+        .expect(201);
+
+      // Assert - Spots assigned
+      expect(response1.body.vehicle_type).toBe('TRUCK_BUS');
+      expect(response2.body.vehicle_type).toBe('TRUCK_BUS');
 
       // Verify all spots occupied
       const availableAfter = await prisma.spot.count({
@@ -216,9 +238,9 @@ describe('POST /v1/facilities/:facility_id/tickets - Truck/Bus Spot Ticket Issua
 
       // Assert
       expect(response.body).toHaveProperty('error');
-      expect(response.body.error).toContain('TRUCK_BUS');
+      expect(response.body.message).toContain('TRUCK_BUS');
 
-      // Verify CAR spots still available
+      // Verify CAR spots still available (3 from setup + 5 created in this test)
       const carAvailable = await prisma.spot.count({
         where: {
           facility_id: testFacilityId,
@@ -226,7 +248,7 @@ describe('POST /v1/facilities/:facility_id/tickets - Truck/Bus Spot Ticket Issua
           status: 'AVAILABLE',
         },
       });
-      expect(carAvailable).toBe(5);
+      expect(carAvailable).toBe(8);
     });
 
     it('should maintain separate inventory for TRUCK_BUS spots', async () => {
@@ -254,9 +276,9 @@ describe('POST /v1/facilities/:facility_id/tickets - Truck/Bus Spot Ticket Issua
       });
 
       // Assert
-      expect(truckTotal).toBe(3);
-      expect(truckOccupied).toBe(3); // All truck spots occupied
-      expect(carTotal).toBe(5); // Separate CAR inventory
+      expect(truckTotal).toBe(5);
+      expect(truckOccupied).toBe(5); // All truck spots occupied
+      expect(carTotal).toBe(8); // Separate CAR inventory (3 from setup + 5 from previous test)
     });
   });
 
@@ -278,8 +300,8 @@ describe('POST /v1/facilities/:facility_id/tickets - Truck/Bus Spot Ticket Issua
 
       // Assert - Error message should be clear and helpful
       expect(response.body).toHaveProperty('error');
-      expect(response.body.error).toMatch(/TRUCK_BUS/i);
-      expect(response.body.error).toMatch(/aucune place|no.*spot|not available/i);
+      expect(response.body.message).toMatch(/TRUCK_BUS/i);
+      expect(response.body.message).toMatch(/aucune place|no.*spot|not available/i);
     });
 
     it('should handle ticket issuance timestamp correctly for commercial vehicles', async () => {

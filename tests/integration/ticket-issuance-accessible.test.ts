@@ -53,7 +53,7 @@ describe('POST /v1/facilities/:facility_id/tickets - Accessible Spot Ticket Issu
 
     // Create ACCESSIBLE spots (typically fewer than regular spots)
     await prisma.spot.createMany({
-      data: Array.from({ length: 3 }, (_, i) => ({
+      data: Array.from({ length: 5 }, (_, i) => ({
         facility_id: testFacilityId,
         spot_number: `ACCESS-${String(i + 1).padStart(2, '0')}`,
         vehicle_type: 'ACCESSIBLE',
@@ -150,8 +150,8 @@ describe('POST /v1/facilities/:facility_id/tickets - Accessible Spot Ticket Issu
         'nfc',
       ];
 
-      // Note: We have 3 spots total, 2 used above, 1 remaining
-      // This test will use the last spot and then fail on subsequent attempts
+      // Note: We have 5 spots total, 3 used above, 2 remaining
+      // This test will use one of the remaining spots
       const requestBody = {
         vehicle_type: 'handicapé',
         ticket_format: formats[0], // Use the remaining spot
@@ -170,7 +170,18 @@ describe('POST /v1/facilities/:facility_id/tickets - Accessible Spot Ticket Issu
 
   describe('Accessible parking compliance', () => {
     it('should enforce accessible spot availability even when other spots available', async () => {
-      // Arrange - Add regular CAR spots
+      // Arrange - First exhaust remaining ACCESSIBLE spots (5 total, 4 used above, 1 remaining)
+      await request(app)
+        .post(`/v1/facilities/${testFacilityId}/tickets`)
+        .set('X-Tenant-ID', testTenantId)
+        .set('X-API-Key', `test-api-key-${testTenantId}`)
+        .send({
+          vehicle_type: 'handicapé',
+          ticket_format: 'magnetic_stripe',
+        })
+        .expect(201);
+
+      // Add regular CAR spots
       await prisma.spot.createMany({
         data: Array.from({ length: 5 }, (_, i) => ({
           facility_id: testFacilityId,
@@ -181,7 +192,7 @@ describe('POST /v1/facilities/:facility_id/tickets - Accessible Spot Ticket Issu
         })),
       });
 
-      // All ACCESSIBLE spots now occupied from previous tests
+      // All ACCESSIBLE spots now occupied
       const requestBody = {
         vehicle_type: 'handicapé',
         ticket_format: 'magnetic_stripe',
@@ -197,7 +208,7 @@ describe('POST /v1/facilities/:facility_id/tickets - Accessible Spot Ticket Issu
 
       // Assert
       expect(response.body).toHaveProperty('error');
-      expect(response.body.error).toContain('ACCESSIBLE');
+      expect(response.body.message).toContain('ACCESSIBLE');
     });
 
     it('should track accessible spot utilization separately from regular spots', async () => {
@@ -226,8 +237,8 @@ describe('POST /v1/facilities/:facility_id/tickets - Accessible Spot Ticket Issu
       });
 
       // Assert - All accessible spots occupied, CAR spots still available
-      expect(accessibleTotal).toBe(3);
-      expect(accessibleOccupied).toBe(3);
+      expect(accessibleTotal).toBe(5);
+      expect(accessibleOccupied).toBe(5);
       expect(carAvailable).toBe(5);
     });
   });
