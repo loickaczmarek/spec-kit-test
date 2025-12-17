@@ -25,7 +25,11 @@ async function executeWithRetry<T>(
       return await operation();
     } catch (error: any) {
       // Retry on deadlock or serialization failure
-      if (error.code === 'P2034' || error.code === '40001' || error.message?.includes('could not obtain lock')) {
+      if (
+        error.code === 'P2034' ||
+        error.code === '40001' ||
+        error.message?.includes('could not obtain lock')
+      ) {
         retries++;
         if (retries >= maxRetries) {
           throw error;

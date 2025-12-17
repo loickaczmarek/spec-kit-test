@@ -18,12 +18,12 @@ export enum VehicleType {
  */
 export function mapFrenchToVehicleType(frenchInput: string): VehicleType {
   const mapping: Record<string, VehicleType> = {
-    'moto': VehicleType.MOTORCYCLE,
-    'voiture': VehicleType.CAR,
-    'électrique': VehicleType.ELECTRIC,
+    moto: VehicleType.MOTORCYCLE,
+    voiture: VehicleType.CAR,
+    électrique: VehicleType.ELECTRIC,
     'camion/bus': VehicleType.TRUCK_BUS,
-    'handicapé': VehicleType.ACCESSIBLE,
-    'familial': VehicleType.FAMILY,
+    handicapé: VehicleType.ACCESSIBLE,
+    familial: VehicleType.FAMILY,
   };
 
   const normalized = frenchInput.toLowerCase().trim();

@@ -19,10 +19,7 @@ export class SpotAvailabilityService {
    * Get available spot count with Redis caching
    * Cache-first strategy with 30s TTL
    */
-  async getAvailableSpotCount(
-    facilityId: FacilityId,
-    vehicleType: VehicleType
-  ): Promise<number> {
+  async getAvailableSpotCount(facilityId: FacilityId, vehicleType: VehicleType): Promise<number> {
     const cacheKey = `spot:avail:${facilityId.toString()}:${vehicleType}`;
 
     try {
@@ -38,10 +35,7 @@ export class SpotAvailabilityService {
       }
 
       // Cache miss - query database
-      const count = await this.spotRepository.countAvailableSpots(
-        facilityId,
-        vehicleType
-      );
+      const count = await this.spotRepository.countAvailableSpots(facilityId, vehicleType);
 
       // Cache with 30s TTL
       await this.cache.set(cacheKey, count.toString(), 30);
@@ -61,10 +55,7 @@ export class SpotAvailabilityService {
       });
 
       // Fallback to database on cache error
-      return await this.spotRepository.countAvailableSpots(
-        facilityId,
-        vehicleType
-      );
+      return await this.spotRepository.countAvailableSpots(facilityId, vehicleType);
     }
   }
 
@@ -97,10 +88,7 @@ export class SpotAvailabilityService {
    * Publish cache invalidation event via Redis Pub/Sub
    * For distributed cache invalidation across multiple instances
    */
-  async publishCacheInvalidation(
-    facilityId: FacilityId,
-    vehicleType: VehicleType
-  ): Promise<void> {
+  async publishCacheInvalidation(facilityId: FacilityId, vehicleType: VehicleType): Promise<void> {
     try {
       await this.cache.publish(
         'spot:invalidate',

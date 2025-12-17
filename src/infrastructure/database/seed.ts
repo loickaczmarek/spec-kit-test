@@ -1,4 +1,10 @@
-import { PrismaClient, TenantStatus, FacilityStatus, VehicleType, SpotStatus } from '@prisma/client';
+import {
+  PrismaClient,
+  TenantStatus,
+  FacilityStatus,
+  VehicleType,
+  SpotStatus,
+} from '@prisma/client';
 
 const prisma = new PrismaClient();
 

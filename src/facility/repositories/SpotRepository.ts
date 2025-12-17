@@ -9,10 +9,7 @@ import { prisma } from '../../infrastructure/database/PrismaClient';
  * Per tasks.md T037
  */
 export interface ISpotRepository {
-  findAvailableSpot(
-    facilityId: FacilityId,
-    vehicleType: VehicleType
-  ): Promise<Spot | null>;
+  findAvailableSpot(facilityId: FacilityId, vehicleType: VehicleType): Promise<Spot | null>;
   updateSpotStatus(spotId: SpotId, status: SpotStatus): Promise<void>;
   countAvailableSpots(facilityId: FacilityId, vehicleType: VehicleType): Promise<number>;
 }
@@ -27,10 +24,7 @@ export class PrismaSpotRepository implements ISpotRepository {
    * Find and lock an available spot atomically
    * Uses pessimistic locking (SELECT FOR UPDATE NOWAIT)
    */
-  async findAvailableSpot(
-    facilityId: FacilityId,
-    vehicleType: VehicleType
-  ): Promise<Spot | null> {
+  async findAvailableSpot(facilityId: FacilityId, vehicleType: VehicleType): Promise<Spot | null> {
     // Use $queryRaw for SELECT FOR UPDATE NOWAIT
     const spots = await prisma.$queryRaw<any[]>`
       SELECT * FROM "Spot"
@@ -78,10 +72,7 @@ export class PrismaSpotRepository implements ISpotRepository {
    * Count available spots for a facility and vehicle type
    * Used for availability queries (not transactional)
    */
-  async countAvailableSpots(
-    facilityId: FacilityId,
-    vehicleType: VehicleType
-  ): Promise<number> {
+  async countAvailableSpots(facilityId: FacilityId, vehicleType: VehicleType): Promise<number> {
     return await prisma.spot.count({
       where: {
         facility_id: facilityId.toString(),

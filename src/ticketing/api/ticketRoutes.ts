@@ -30,10 +30,7 @@ eventPublisher.connect().catch((error) => {
   });
 });
 
-const ticketIssuanceService = new TicketIssuanceService(
-  facilityRepository,
-  eventPublisher
-);
+const ticketIssuanceService = new TicketIssuanceService(facilityRepository, eventPublisher);
 
 // Initialize ticket writers
 const ticketWriters: TicketWriter[] = [
@@ -56,12 +53,9 @@ router.post(
 
     // Validate request
     if (!vehicle_type) {
-      throw new AppError(
-        'Missing required field: vehicle_type',
-        400,
-        true,
-        { allowed_types: ['moto', 'voiture', 'électrique', 'camion/bus', 'handicapé', 'familial'] }
-      );
+      throw new AppError('Missing required field: vehicle_type', 400, true, {
+        allowed_types: ['moto', 'voiture', 'électrique', 'camion/bus', 'handicapé', 'familial'],
+      });
     }
 
     if (!req.tenantId) {
@@ -84,33 +78,22 @@ router.post(
     // Validate ticket format
     const validFormats: TicketFormat[] = ['magnetic_stripe', 'qr_code', 'nfc'];
     if (!validFormats.includes(ticket_format)) {
-      throw new AppError(
-        `Invalid ticket_format: ${ticket_format}`,
-        400,
-        true,
-        { allowed_formats: validFormats }
-      );
+      throw new AppError(`Invalid ticket_format: ${ticket_format}`, 400, true, {
+        allowed_formats: validFormats,
+      });
     }
 
     // Find appropriate ticket writer
     const writer = ticketWriters.find((w) => w.supports(ticket_format));
     if (!writer) {
-      throw new AppError(
-        `No ticket writer available for format: ${ticket_format}`,
-        500,
-        true
-      );
+      throw new AppError(`No ticket writer available for format: ${ticket_format}`, 500, true);
     }
 
     const tenantId = new TenantId(req.tenantId);
     const facilityId = new FacilityId(facility_id);
 
     // Issue ticket
-    const ticket = await ticketIssuanceService.issueTicket(
-      tenantId,
-      facilityId,
-      vehicleType
-    );
+    const ticket = await ticketIssuanceService.issueTicket(tenantId, facilityId, vehicleType);
 
     // Write ticket to physical medium
     const writeResult = await writer.write(ticket);

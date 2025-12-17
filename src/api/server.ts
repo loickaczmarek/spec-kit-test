@@ -45,7 +45,6 @@ async function startServer() {
     // Listen for termination signals
     process.on('SIGTERM', () => shutdown('SIGTERM'));
     process.on('SIGINT', () => shutdown('SIGINT'));
-
   } catch (error) {
     Logger.error('Failed to start server', {
       error: error instanceof Error ? error.message : 'Unknown error',

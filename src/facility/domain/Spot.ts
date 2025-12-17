@@ -85,7 +85,9 @@ export class Spot {
    */
   markAsAvailable(): void {
     if (this._status !== SpotStatus.OCCUPIED && this._status !== SpotStatus.MAINTENANCE) {
-      throw new Error(`Cannot make spot ${this.spotNumber} available. Current status: ${this._status}`);
+      throw new Error(
+        `Cannot make spot ${this.spotNumber} available. Current status: ${this._status}`
+      );
     }
 
     this._status = SpotStatus.AVAILABLE;
@@ -99,7 +101,9 @@ export class Spot {
    */
   markForMaintenance(): void {
     if (this._status !== SpotStatus.AVAILABLE) {
-      throw new Error(`Cannot set spot ${this.spotNumber} to maintenance. Current status: ${this._status}`);
+      throw new Error(
+        `Cannot set spot ${this.spotNumber} to maintenance. Current status: ${this._status}`
+      );
     }
 
     this._status = SpotStatus.MAINTENANCE;

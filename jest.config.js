@@ -5,6 +5,7 @@ module.exports = {
   testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts'],
   transform: {
     '^.+\\.ts$': 'ts-jest',
+    '^.+\\.js$': 'babel-jest',
   },
   moduleNameMapper: {
     '^@shared/(.*)$': '<rootDir>/src/shared/$1',
@@ -12,7 +13,11 @@ module.exports = {
     '^@ticketing/(.*)$': '<rootDir>/src/ticketing/$1',
     '^@infrastructure/(.*)$': '<rootDir>/src/infrastructure/$1',
     '^@api/(.*)$': '<rootDir>/src/api/$1',
+    '^uuid$': require.resolve('uuid'),
   },
+  transformIgnorePatterns: [
+    'node_modules/(?!uuid)',
+  ],
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.d.ts',

@@ -27,9 +27,7 @@ export const errorHandler = (
   // Determine status code and message
   const statusCode = err instanceof AppError ? err.statusCode : 500;
   const message =
-    err instanceof AppError && err.isOperational
-      ? err.message
-      : 'Internal Server Error';
+    err instanceof AppError && err.isOperational ? err.message : 'Internal Server Error';
 
   // Build error response
   const errorResponse: any = {

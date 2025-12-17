@@ -21,9 +21,10 @@ export const tenantContext = async (
 ): Promise<void> => {
   try {
     // Generate correlation ID for request tracking
-    const correlationId = req.headers['x-request-id'] as string ||
-                          req.headers['x-correlation-id'] as string ||
-                          `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const correlationId =
+      (req.headers['x-request-id'] as string) ||
+      (req.headers['x-correlation-id'] as string) ||
+      `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     req.correlationId = correlationId;
 
     // Extract API key from header
